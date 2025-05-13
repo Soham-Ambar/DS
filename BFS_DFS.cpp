@@ -1,101 +1,149 @@
 #include <iostream>
+#include <vector>
+#include <queue>
 using namespace std;
 
-#define MAX 100
-#define INF 9999
+#define SIZE 11
 
+// ===== Graph using Adjacency Matrix =====
 class Graph
 {
-    int adjMatrix[MAX][MAX];
-    int numVertices;
-
 public:
-    Graph()
+    int numVertices;
+    vector<vector<int>> adjMatrix;
+    vector<bool> visited;
+
+    Graph(int vertices)
     {
-        numVertices = 0;
-        for (int i = 0; i < MAX; i++)
-            for (int j = 0; j < MAX; j++)
-                adjMatrix[i][j] = 0;
+        numVertices = vertices;
+        adjMatrix.resize(vertices, vector<int>(vertices, 0));
+        visited.resize(vertices, false);
     }
 
-    void createGraph(int v)
+    void addEdge(int src, int dest)
     {
-        numVertices = v;
-        for (int i = 0; i < v; i++)
-            for (int j = 0; j < v; j++)
-                adjMatrix[i][j] = 0;
-    }
-
-    void addEdge(int src, int dest, int weight)
-    {
-        if (src >= numVertices || dest >= numVertices || src < 0 || dest < 0)
+        if (src >= 0 && dest >= 0 && src < numVertices && dest < numVertices)
         {
-            cout << "Invalid edge!\n";
-            return;
+            adjMatrix[src][dest] = 1;
+            adjMatrix[dest][src] = 1;
         }
-        adjMatrix[src][dest] = weight;
-        adjMatrix[dest][src] = weight; // For undirected graph
     }
 
-    void dijkstra(int startVertex)
+    void DFS(int vertex)
     {
-        int distance[MAX];
-        bool visited[MAX];
+        visited[vertex] = true;
+        cout << vertex << " ";
 
         for (int i = 0; i < numVertices; i++)
         {
-            distance[i] = INF;
-            visited[i] = false;
+            if (adjMatrix[vertex][i] == 1 && !visited[i])
+                DFS(i);
         }
+    }
 
-        distance[startVertex] = 0;
+    void BFS(int startVertex)
+    {
+        fill(visited.begin(), visited.end(), false);
+        queue<int> q;
+        visited[startVertex] = true;
+        q.push(startVertex);
 
-        for (int count = 0; count < numVertices - 1; count++)
+        while (!q.empty())
         {
-            int minDistance = INF, minIndex;
+            int currentVertex = q.front();
+            q.pop();
+            cout << currentVertex << " ";
 
-            for (int v = 0; v < numVertices; v++)
+            for (int i = 0; i < numVertices; i++)
             {
-                if (!visited[v] && distance[v] <= minDistance)
+                if (adjMatrix[currentVertex][i] == 1 && !visited[i])
                 {
-                    minDistance = distance[v];
-                    minIndex = v;
-                }
-            }
-
-            int u = minIndex;
-            visited[u] = true;
-
-            for (int v = 0; v < numVertices; v++)
-            {
-                if (!visited[v] && adjMatrix[u][v] &&
-                    distance[u] != INF &&
-                    distance[u] + adjMatrix[u][v] < distance[v])
-                {
-                    distance[v] = distance[u] + adjMatrix[u][v];
+                    q.push(i);
+                    visited[i] = true;
                 }
             }
         }
+    }
 
-        // Print shortest distances
-        cout << "Vertex\tDistance from Source " << startVertex << "\n";
-        for (int i = 0; i < numVertices; i++)
-            cout << i << "\t" << distance[i] << "\n";
+    void resetVisited()
+    {
+        fill(visited.begin(), visited.end(), false);
     }
 };
 
-// ===== Menu Driven Main Function =====
+// ===== HashTable (No changes needed) =====
+class HashTable
+{
+private:
+    int table[SIZE][2];
+
+public:
+    HashTable()
+    {
+        for (int i = 0; i < SIZE; i++)
+        {
+            table[i][0] = -1;
+            table[i][1] = -1;
+        }
+    }
+
+    int hashFunction(int key)
+    {
+        return key % SIZE;
+    }
+
+    void insert(int key)
+    {
+        int index = hashFunction(key);
+        int i = index;
+        int attempts = 0;
+
+        while (attempts < SIZE)
+        {
+            if (table[i][0] == -1)
+            {
+                table[i][0] = key;
+                cout << "Key " << key << " inserted at row " << i << ", column 0.\n";
+                return;
+            }
+            else if (table[i][1] == -1)
+            {
+                table[i][1] = key;
+                cout << "Key " << key << " inserted at row " << i << ", column 1.\n";
+                return;
+            }
+            i = (i + 1) % SIZE;
+            attempts++;
+        }
+        cout << "Hash Table Overflow\n";
+    }
+
+    void display()
+    {
+        cout << "Hash Table:\n";
+        for (int i = 0; i < SIZE; i++)
+        {
+            cout << "Row " << i << ": [" << table[i][0] << ", " << table[i][1] << "]\n";
+        }
+    }
+};
+
+// ===== Main Menu (Same) =====
 int main()
 {
-    Graph g;
-    int choice, v, src, dest, weight, start;
+    Graph *graph = nullptr;
+    HashTable hashTable;
+    int choice, v, src, dest, start;
 
     while (true)
     {
         cout << "\n===== MENU =====\n";
         cout << "1. Create Graph\n";
         cout << "2. Add Edge\n";
-        cout << "3. Find Shortest Path (Dijkstra)\n";
+        cout << "3. DFS\n";
+        cout << "4. BFS\n";
+        cout << "5. Insert in Hash Table (2 Columns)\n";
+        cout << "6. Display Hash Table\n";
         cout << "0. Exit\n";
         cout << "Enter choice: ";
         cin >> choice;
@@ -105,28 +153,60 @@ int main()
         case 1:
             cout << "Enter number of vertices: ";
             cin >> v;
-            g.createGraph(v);
+            delete graph;
+            graph = new Graph(v);
             cout << "Graph created with " << v << " vertices.\n";
             break;
-
         case 2:
-            cout << "Enter source, destination and weight: ";
-            cin >> src >> dest >> weight;
-            g.addEdge(src, dest, weight);
-            cout << "Edge added.\n";
+            if (!graph)
+            {
+                cout << "Create a graph first!\n";
+                break;
+            }
+            cout << "Enter source and destination: ";
+            cin >> src >> dest;
+            graph->addEdge(src, dest);
+            cout << "Edge added!\n";
             break;
-
         case 3:
-            cout << "Enter starting vertex: ";
+            if (!graph)
+            {
+                cout << "Create a graph first!\n";
+                break;
+            }
+            graph->resetVisited();
+            cout << "Enter starting vertex for DFS: ";
             cin >> start;
-            g.dijkstra(start);
+            cout << "DFS: ";
+            graph->DFS(start);
+            cout << "\n";
             break;
-
+        case 4:
+            if (!graph)
+            {
+                cout << "Create a graph first!\n";
+                break;
+            }
+            cout << "Enter starting vertex for BFS: ";
+            cin >> start;
+            cout << "BFS: ";
+            graph->BFS(start);
+            cout << "\n";
+            break;
+        case 5:
+            cout << "Enter element to insert in hash table: ";
+            cin >> src;
+            hashTable.insert(src);
+            break;
+        case 6:
+            hashTable.display();
+            break;
         case 0:
+            delete graph;
+            cout << "Exiting...\n";
             return 0;
-
         default:
-            cout << "Invalid choice.\n";
+            cout << "Invalid Choice!\n";
         }
     }
 
